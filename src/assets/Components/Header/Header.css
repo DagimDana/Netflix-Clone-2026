@@ -1,0 +1,140 @@
+.header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 4%;
+  height: 68px;
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.85) 0%,
+    transparent 100%
+  );
+  transition: background 0.3s ease;
+}
+
+.header--scrolled {
+  background: #141414;
+}
+
+.header__left {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+}
+
+.header__logo {
+  font-size: 28px;
+  font-weight: 900;
+  color: #e50914;
+  letter-spacing: -0.5px;
+  cursor: pointer;
+  font-style: italic;
+}
+
+.header__nav {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.header__nav-link {
+  color: #e5e5e5;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 400;
+  transition: color 0.2s;
+}
+
+.header__nav-link:hover {
+  color: #fff;
+}
+
+.header__nav-link--active {
+  color: #fff;
+  font-weight: 600;
+}
+
+.header__right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.header__search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.header__icon-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.2s;
+}
+
+.header__icon-btn:hover {
+  opacity: 0.75;
+}
+
+.header__search-input {
+  background: rgba(0, 0, 0, 0.75);
+  border: 1px solid #fff;
+  color: #fff;
+  padding: 6px 12px;
+  font-size: 13px;
+  outline: none;
+  border-radius: 2px;
+  width: 200px;
+  animation: expandSearch 0.2s ease;
+}
+
+.header__search-input::placeholder {
+  color: #aaa;
+}
+
+@keyframes expandSearch {
+  from {
+    width: 0;
+    opacity: 0;
+  }
+  to {
+    width: 200px;
+    opacity: 1;
+  }
+}
+
+.header__login-btn {
+  background: #e50914;
+  color: #fff;
+  border: none;
+  padding: 7px 18px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.header__login-btn:hover {
+  background: #f40612;
+}
+
+@media (max-width: 768px) {
+  .header__nav {
+    display: none;
+  }
+
+  .header__logo {
+    font-size: 22px;
+  }
+}

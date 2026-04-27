@@ -27,6 +27,7 @@ body {
   min-width: 320px;
   min-height: 100vh;
   background: #141414;
+  overflow-x: hidden;
 }
 
 a {

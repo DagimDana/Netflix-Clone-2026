@@ -104,7 +104,6 @@
   flex: 1;
   margin-left: 250px;
   padding: 32px 36px 60px;
-  transition: margin-right 0.3s ease;
   min-width: 0;
 }
 

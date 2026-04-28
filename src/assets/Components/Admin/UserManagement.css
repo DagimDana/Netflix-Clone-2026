@@ -6,6 +6,7 @@
   min-height: 100vh;
   background: #111214;
   color: #e8e8e8;
+   width: 100%;
   font-family: "Inter", "Segoe UI", system-ui, sans-serif;
   position: relative;
   overflow-x: hidden;

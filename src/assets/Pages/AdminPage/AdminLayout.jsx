@@ -3,10 +3,10 @@ import { Outlet } from 'react-router-dom';
 
 function AdminLayout() {
   return (
-    <div className="admin-layout">
+    <div>
       <Sidebar />
 
-      <div className="admin-main">
+      <div>
         <Outlet />
       </div>
     </div>

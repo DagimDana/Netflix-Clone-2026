@@ -32,7 +32,7 @@ function App() {
 
         {/* ADMIN PAGES (NO header/footer) */}
         <Route path="/admin" element={<AdminLayout />}>
-          <Route index element={<AdminDashboard />} />
+          <Route path="dashboard" element={<AdminDashboard />} />
           <Route path="videos" element={<VideoManagement />} />
           <Route path="users" element={<UserManagement />} />
           <Route path="stats" element={<Statistics />} />

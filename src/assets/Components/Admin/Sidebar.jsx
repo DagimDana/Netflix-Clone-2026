@@ -4,7 +4,7 @@ import { LayoutDashboard, Video, Users, BarChart2, LogOut } from 'lucide-react';
 import './Sidebar.css';
 
 const NAV_ITEMS = [
-  { path: '/admin', label: 'Dashboard', icon: LayoutDashboard },
+  { path: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/admin/videos', label: 'Video Management', icon: Video },
   { path: '/admin/users', label: 'User Management', icon: Users },
   { path: '/admin/stats', label: 'Statistics', icon: BarChart2 },

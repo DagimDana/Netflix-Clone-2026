@@ -40,7 +40,7 @@ function Avatar({ src, username }) {
   );
 }
 
-function Dropdown({ label, options, value, onChange }) {
+function Dropdown({ options, value, onChange }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 

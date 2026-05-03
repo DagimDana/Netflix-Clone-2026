@@ -17,13 +17,6 @@ import {
 import './AdminDashboard.css';
 import Sidebar from './Sidebar';
 
-// const NAV_ITEMS = [
-//   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-//   { id: 'video', label: 'Video Management', icon: Video },
-//   { id: 'users', label: 'User Management', icon: Users },
-//   { id: 'stats', label: 'Statistics', icon: BarChart2 },
-// ];
-
 const SYSTEM_STATS = [
   {
     label: 'Total Users',

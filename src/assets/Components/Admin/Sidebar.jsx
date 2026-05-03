@@ -20,18 +20,22 @@ function Sidebar() {
       </div>
 
       <nav className="vm-sidebar__nav">
-        {NAV_ITEMS.map(({ path, label, icon: Icon }) => (
-          <NavLink
-            key={path}
-            to={path}
-            className={({ isActive }) =>
-              `vm-nav-item ${isActive ? 'vm-nav-item--active' : ''}`
-            }
-          >
-            <Icon size={18} />
-            <span>{label}</span>
-          </NavLink>
-        ))}
+        {NAV_ITEMS.map((item) => {
+          const Icon = item.icon;
+
+          return (
+            <NavLink
+              key={item.path}
+              to={item.path}
+              className={({ isActive }) =>
+                `vm-nav-item ${isActive ? 'vm-nav-item--active' : ''}`
+              }
+            >
+              <Icon size={18} />
+              <span>{item.label}</span>
+            </NavLink>
+          );
+        })}
       </nav>
 
       <button className="vm-sidebar__logout">
@@ -44,3 +48,8 @@ function Sidebar() {
 }
 
 export default Sidebar;
+
+
+
+
+

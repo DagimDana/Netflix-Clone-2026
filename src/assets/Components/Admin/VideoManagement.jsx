@@ -1,6 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
-import { LayoutDashboard, Video, Users, BarChart2, LogOut, Play, Eye, Star, TrendingUp, Search, Filter, RefreshCw, Plus, MoreVertical, Check, X, ChevronDown, CreditCard as Edit2, Trash2, Archive, AlertCircle } from 'lucide-react';
-// import { supabase } from '../lib/supabase';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { Video, Play, Eye, Star, TrendingUp, Search, Filter, RefreshCw, Plus, MoreVertical, Check, X, ChevronDown, CreditCard as Edit2, Trash2, Archive, AlertCircle } from 'lucide-react';
 import './VideoManagement.css';
 import Sidebar from './Sidebar';
 
@@ -15,11 +14,16 @@ const STATUS_OPTIONS = ['All Status', 'Published', 'Draft', 'Archived'];
 
 const AGE_RATINGS = ['G', 'PG', 'PG-13', 'R', 'NC-17'];
 
+const CURRENT_YEAR = new Date().getFullYear();
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+
 const EMPTY_FORM = {
   title: '',
   synopsis: '',
-  release_year: new Date().getFullYear(),
+  release_year: CURRENT_YEAR,
   duration_mins: 0,
+  youtube_url: '',
   status: 'draft',
   age_rating: 'PG-13',
   cover_url: '',
@@ -27,8 +31,98 @@ const EMPTY_FORM = {
   is_trending: false,
 };
 
+const requestJson = async (path, options = {}) => {
+  let response;
+
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      ...options,
+      headers: {
+        ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+        ...(options.headers || {}),
+      },
+    });
+  } catch {
+    throw new Error(`Cannot reach API at ${API_BASE_URL}`);
+  }
+
+  const responseText = await response.text();
+  let data = null;
+
+  try {
+    data = responseText ? JSON.parse(responseText) : null;
+  } catch {
+    data = { error: responseText || 'Request failed' };
+  }
+
+  if (!response.ok) {
+    throw new Error(data?.error || 'Request failed');
+  }
+
+  return data;
+};
+
+const extractYouTubeVideoId = (youtubeUrl) => {
+  if (!youtubeUrl) return '';
+
+  try {
+    const parsedUrl = new URL(youtubeUrl);
+    const hostname = parsedUrl.hostname.replace(/^www\./, '');
+
+    if (hostname === 'youtu.be') {
+      return parsedUrl.pathname.split('/').filter(Boolean)[0] || '';
+    }
+
+    if (hostname.endsWith('youtube.com')) {
+      if (parsedUrl.pathname.startsWith('/shorts/')) {
+        return parsedUrl.pathname.split('/').filter(Boolean)[1] || '';
+      }
+
+      if (parsedUrl.pathname.startsWith('/embed/')) {
+        return parsedUrl.pathname.split('/').filter(Boolean)[1] || '';
+      }
+
+      return parsedUrl.searchParams.get('v') || '';
+    }
+  } catch {
+    const match = youtubeUrl.match(/(?:v=|\/)([0-9A-Za-z_-]{11})(?:[?&/]|$)/);
+    return match?.[1] || '';
+  }
+
+  return '';
+};
+
+const getYouTubeThumbnailUrl = (youtubeUrl) => {
+  const videoId = extractYouTubeVideoId(youtubeUrl);
+  return videoId ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` : '';
+};
+
+const clampReleaseYear = (value) => {
+  const parsedYear = Number(value);
+  if (!Number.isFinite(parsedYear)) return CURRENT_YEAR;
+  return Math.min(Math.max(Math.trunc(parsedYear), 1900), CURRENT_YEAR);
+};
+
+const clampDurationMins = (value) => {
+  const parsedDuration = Number(value);
+  if (!Number.isFinite(parsedDuration)) return 0;
+  return Math.max(0, Math.trunc(parsedDuration));
+};
+
+const buildVideoPayload = (data) => ({
+  title: data.title.trim(),
+  synopsis: data.synopsis.trim(),
+  release_year: clampReleaseYear(data.release_year),
+  duration_mins: clampDurationMins(data.duration_mins),
+  youtube_url: data.youtube_url.trim(),
+  status: data.status,
+  age_rating: data.age_rating,
+  cover_url: (data.cover_url || getYouTubeThumbnailUrl(data.youtube_url)).trim(),
+  is_featured: Boolean(data.is_featured),
+  is_trending: Boolean(data.is_trending),
+});
+
 export default function VideoManagement() {
-  const [activeNav, setActiveNav] = useState('video');
   const [videos, setVideos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -46,9 +140,27 @@ export default function VideoManagement() {
   const statusDropdownRef = useRef(null);
   const actionMenuRef = useRef(null);
 
+  const showNotification = useCallback((message, type = 'success') => {
+    setNotification({ message, type });
+    setTimeout(() => setNotification(null), 3000);
+  }, []);
+
+  const fetchVideos = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await requestJson('/videos');
+      setVideos(Array.isArray(data) ? data : []);
+    } catch (error) {
+      setVideos([]);
+      showNotification(error.message || 'Failed to load videos', 'error');
+    } finally {
+      setLoading(false);
+    }
+  }, [showNotification]);
+
   useEffect(() => {
     fetchVideos();
-  }, []);
+  }, [fetchVideos]);
 
   useEffect(() => {
     const handler = (e) => {
@@ -62,21 +174,6 @@ export default function VideoManagement() {
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
-
-  const fetchVideos = async () => {
-    setLoading(true);
-    const { data, error } = await supabase
-      .from('videos')
-      .select('*')
-      .order('updated_at', { ascending: false });
-    if (!error && data) setVideos(data);
-    setLoading(false);
-  };
-
-  const showNotification = (message, type = 'success') => {
-    setNotification({ message, type });
-    setTimeout(() => setNotification(null), 3000);
-  };
 
   const openAddPanel = () => {
     setEditingVideo(null);
@@ -92,9 +189,10 @@ export default function VideoManagement() {
       synopsis: video.synopsis || '',
       release_year: video.release_year,
       duration_mins: video.duration_mins,
+      youtube_url: video.youtube_url || '',
       status: video.status,
       age_rating: video.age_rating,
-      cover_url: video.cover_url || '',
+      cover_url: video.cover_url || getYouTubeThumbnailUrl(video.youtube_url || ''),
       is_featured: video.is_featured,
       is_trending: video.is_trending,
     });
@@ -112,6 +210,12 @@ export default function VideoManagement() {
     const errors = {};
     if (!formData.title.trim()) errors.title = 'Title is required';
     if (!formData.status) errors.status = 'Status is required';
+    if (formData.release_year === '' || formData.release_year === null || formData.release_year === undefined) {
+      errors.release_year = 'Release year is required';
+    }
+    if (formData.duration_mins === '' || formData.duration_mins === null || formData.duration_mins === undefined) {
+      errors.duration_mins = 'Duration is required';
+    }
     return errors;
   };
 
@@ -122,61 +226,57 @@ export default function VideoManagement() {
       return;
     }
     setSaving(true);
-    const payload = {
-      ...formData,
-      updated_at: new Date().toISOString(),
-    };
-    if (editingVideo) {
-      const { error } = await supabase
-        .from('videos')
-        .update(payload)
-        .eq('id', editingVideo.id);
-      if (!error) {
+    const payload = buildVideoPayload(formData);
+    try {
+      if (editingVideo) {
+        await requestJson(`/videos/${editingVideo.id}`, {
+          method: 'PUT',
+          body: JSON.stringify(payload),
+        });
         showNotification('Video updated successfully');
-        fetchVideos();
-        closePanel();
       } else {
-        showNotification('Failed to update video', 'error');
-      }
-    } else {
-      const { error } = await supabase.from('videos').insert([payload]);
-      if (!error) {
+        await requestJson('/videos', {
+          method: 'POST',
+          body: JSON.stringify(payload),
+        });
         showNotification('Video added successfully');
-        fetchVideos();
-        closePanel();
-      } else {
-        showNotification('Failed to add video', 'error');
       }
+      await fetchVideos();
+      closePanel();
+    } catch (error) {
+      showNotification(error.message || 'Failed to save video', 'error');
     }
     setSaving(false);
   };
 
   const handleDelete = async (id) => {
-    const { error } = await supabase.from('videos').delete().eq('id', id);
-    if (!error) {
+    try {
+      await requestJson(`/videos/${id}`, { method: 'DELETE' });
       showNotification('Video deleted successfully');
-      setVideos((prev) => prev.filter((v) => v.id !== id));
-    } else {
-      showNotification('Failed to delete video', 'error');
+      await fetchVideos();
+    } catch (error) {
+      showNotification(error.message || 'Failed to delete video', 'error');
     }
     setDeleteConfirm(null);
     setActionMenuOpen(null);
   };
 
   const handleStatusChange = async (id, newStatus) => {
-    const { error } = await supabase
-      .from('videos')
-      .update({ status: newStatus, updated_at: new Date().toISOString() })
-      .eq('id', id);
-    if (!error) {
+    try {
+      await requestJson(`/videos/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ status: newStatus }),
+      });
       showNotification(`Video ${newStatus}`);
-      fetchVideos();
+      await fetchVideos();
+    } catch (error) {
+      showNotification(error.message || 'Failed to update video status', 'error');
     }
     setActionMenuOpen(null);
   };
 
   const filteredVideos = videos.filter((v) => {
-    const matchSearch = v.title.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchSearch = (v.title || '').toLowerCase().includes(searchQuery.toLowerCase());
     const matchStatus =
       statusFilter === 'All Status' ||
       v.status === statusFilter.toLowerCase();
@@ -467,23 +567,70 @@ export default function VideoManagement() {
 
             <div className="vm-form-row">
               <div className="vm-form-group">
-                <label className="vm-label">Release Year</label>
+                <label className="vm-label">
+                  Release Year <span className="vm-required">*</span>
+                </label>
                 <input
                   className="vm-input"
                   type="number"
+                  min="1900"
+                  max={CURRENT_YEAR}
+                  required
                   value={formData.release_year}
-                  onChange={(e) => setFormData((p) => ({ ...p, release_year: parseInt(e.target.value) || 0 }))}
+                  onChange={(e) => {
+                    setFormData((p) => ({ ...p, release_year: e.target.value }));
+                  }}
+                  onBlur={(e) => {
+                    const nextValue = e.target.value;
+                    setFormData((p) => ({
+                      ...p,
+                      release_year: nextValue === '' ? '' : clampReleaseYear(nextValue),
+                    }));
+                  }}
                 />
+                {formErrors.release_year && <span className="vm-error-msg">{formErrors.release_year}</span>}
               </div>
               <div className="vm-form-group">
-                <label className="vm-label">Duration (mins)</label>
+                <label className="vm-label">
+                  Duration (mins) <span className="vm-required">*</span>
+                </label>
                 <input
                   className="vm-input"
                   type="number"
+                  min="0"
+                  required
                   value={formData.duration_mins}
-                  onChange={(e) => setFormData((p) => ({ ...p, duration_mins: parseInt(e.target.value) || 0 }))}
+                  onChange={(e) => {
+                    setFormData((p) => ({ ...p, duration_mins: e.target.value }));
+                  }}
+                  onBlur={(e) => {
+                    const nextValue = e.target.value;
+                    setFormData((p) => ({
+                      ...p,
+                      duration_mins: nextValue === '' ? '' : clampDurationMins(nextValue),
+                    }));
+                  }}
                 />
+                {formErrors.duration_mins && <span className="vm-error-msg">{formErrors.duration_mins}</span>}
               </div>
+            </div>
+
+            <div className="vm-form-group">
+              <label className="vm-label">YouTube Video URL</label>
+              <input
+                className="vm-input"
+                type="url"
+                placeholder="https://www.youtube.com/watch?v=..."
+                value={formData.youtube_url}
+                onChange={(e) => {
+                  const youtubeUrl = e.target.value;
+                  setFormData((p) => ({
+                    ...p,
+                    youtube_url: youtubeUrl,
+                    cover_url: getYouTubeThumbnailUrl(youtubeUrl),
+                  }));
+                }}
+              />
             </div>
 
             <div className="vm-form-row">
@@ -497,6 +644,14 @@ export default function VideoManagement() {
                   onChange={(e) => setFormData((p) => ({ ...p, status: e.target.value }))}
                 >
                   <option value="draft">Draft</option>
+
+              {editingVideo?.youtube_url && (
+                <div className="vm-video-link">
+                  <a href={editingVideo.youtube_url} target="_blank" rel="noreferrer">
+                    Open YouTube Video
+                  </a>
+                </div>
+              )}
                   <option value="published">Published</option>
                   <option value="archived">Archived</option>
                 </select>
@@ -519,17 +674,23 @@ export default function VideoManagement() {
           <div className="vm-form-section">
             <h3 className="vm-form-section__title">Media</h3>
             <div className="vm-form-group">
-              <label className="vm-label">Cover Image URL</label>
+              <label className="vm-label">Thumbnail Preview</label>
               <input
                 className="vm-input"
-                placeholder="https://..."
-                value={formData.cover_url}
-                onChange={(e) => setFormData((p) => ({ ...p, cover_url: e.target.value }))}
+                placeholder="Thumbnail will be captured from the YouTube link"
+                value={formData.cover_url || getYouTubeThumbnailUrl(formData.youtube_url)}
+                readOnly
               />
-              {formData.cover_url && (
+              {(formData.cover_url || getYouTubeThumbnailUrl(formData.youtube_url)) && (
                 <div className="vm-cover-preview">
-                  <img src={formData.cover_url} alt="Cover preview" />
+                  <img
+                    src={formData.cover_url || getYouTubeThumbnailUrl(formData.youtube_url)}
+                    alt="YouTube thumbnail preview"
+                  />
                 </div>
+              )}
+              {!formData.youtube_url && (
+                <span className="vm-helper-text">Add a YouTube link to auto-capture the thumbnail.</span>
               )}
             </div>
           </div>

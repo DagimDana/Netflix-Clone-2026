@@ -857,6 +857,13 @@
   margin-top: 5px;
 }
 
+.vm-helper-text {
+  display: block;
+  margin-top: 8px;
+  font-size: 0.78rem;
+  color: #6b7280;
+}
+
 /* ===== COVER PREVIEW ===== */
 .vm-cover-preview {
   margin-top: 10px;

@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef } from 'react';
-import { Search, ChevronDown, Check, Plus, MoreHorizontal, X, LayoutDashboard, Video, Users, BarChart2, LogOut, Eye, Pencil, Trash2, CircleUser as UserCircle } from 'lucide-react';
-// import { supabase } from '../../lib/supabase';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { Search, ChevronDown, Check, Plus, MoreHorizontal, X, Eye, Pencil, Trash2, CircleUser as UserCircle } from 'lucide-react';
 import Sidebar from './Sidebar'; // or correct relative path
+import { requestJson } from './adminApi';
 import './UserManagement.css';
 
 const ROLES = ['All Roles', 'Admin', 'User'];
@@ -134,17 +134,25 @@ function AddUserModal({ onClose, onCreated }) {
       return;
     }
     setLoading(true);
-    const { error: err } = await supabase.from('managed_users').insert([{
-      username: form.username.trim(),
-      email: form.email.trim(),
-      role: form.role,
-      status: form.status,
-      avatar_url: form.avatar_url.trim() || null,
-    }]);
-    setLoading(false);
-    if (err) { setError(err.message); return; }
-    onCreated();
-    onClose();
+    try {
+      await requestJson('/users', {
+        method: 'POST',
+        body: JSON.stringify({
+          username: form.username.trim(),
+          email: form.email.trim(),
+          password: form.password,
+          role: form.role,
+          status: form.status,
+          avatar_url: form.avatar_url.trim(),
+        }),
+      });
+      onCreated();
+      onClose();
+    } catch (error) {
+      setError(error.message || 'Failed to create user');
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -223,17 +231,24 @@ function EditUserModal({ user, onClose, onUpdated }) {
     e.preventDefault();
     setError('');
     setLoading(true);
-    const { error: err } = await supabase.from('managed_users').update({
-      username: form.username.trim(),
-      email: form.email.trim(),
-      role: form.role,
-      status: form.status,
-      avatar_url: form.avatar_url.trim() || null,
-    }).eq('id', user.id);
-    setLoading(false);
-    if (err) { setError(err.message); return; }
-    onUpdated();
-    onClose();
+    try {
+      await requestJson(`/users/${user.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          username: form.username.trim(),
+          email: form.email.trim(),
+          role: form.role,
+          status: form.status,
+          avatar_url: form.avatar_url.trim(),
+        }),
+      });
+      onUpdated();
+      onClose();
+    } catch (error) {
+      setError(error.message || 'Failed to update user');
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -323,10 +338,13 @@ function DeleteConfirmModal({ user, onClose, onDeleted }) {
 
   async function handleDelete() {
     setLoading(true);
-    await supabase.from('managed_users').delete().eq('id', user.id);
-    setLoading(false);
-    onDeleted();
-    onClose();
+    try {
+      await requestJson(`/users/${user.id}`, { method: 'DELETE' });
+      onDeleted();
+      onClose();
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -358,17 +376,19 @@ export default function UserManagement() {
   const [statusFilter, setStatusFilter] = useState('All Status');
   const [modal, setModal] = useState(null); // null | { type, user? }
 
-  async function fetchUsers() {
+  const fetchUsers = useCallback(async () => {
     setLoading(true);
-    const { data } = await supabase
-      .from('managed_users')
-      .select('*')
-      .order('created_at', { ascending: false });
-    setUsers(data || []);
-    setLoading(false);
-  }
+    try {
+      const data = await requestJson('/users');
+      setUsers(Array.isArray(data) ? data : []);
+    } catch {
+      setUsers([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  useEffect(() => { fetchUsers(); }, []);
+  useEffect(() => { fetchUsers(); }, [fetchUsers]);
 
   const filtered = users.filter((u) => {
     const matchSearch =

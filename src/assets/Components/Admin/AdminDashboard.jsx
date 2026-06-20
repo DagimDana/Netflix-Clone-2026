@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   LayoutDashboard,
   Video,
@@ -16,61 +16,7 @@ import {
 } from 'lucide-react';
 import './AdminDashboard.css';
 import Sidebar from './Sidebar';
-
-const SYSTEM_STATS = [
-  {
-    label: 'Total Users',
-    value: '13',
-    icon: Users,
-    iconColor: '#4a9eff',
-    iconBg: '#1a3a5c',
-  },
-  {
-    label: 'Total Videos',
-    value: '12',
-    icon: Video,
-    iconColor: '#ff4444',
-    iconBg: '#3a1a1a',
-  },
-  {
-    label: 'Active Users (Today)',
-    value: '1',
-    icon: Activity,
-    iconColor: '#22c55e',
-    iconBg: '#0f2d1a',
-  },
-  {
-    label: 'Total Views',
-    value: '15,420',
-    icon: Eye,
-    iconColor: '#f59e0b',
-    iconBg: '#2d1f0a',
-  },
-];
-
-const ANALYTICS_STATS = [
-  {
-    label: 'Total Views',
-    value: '24',
-    sub: 'in selected period',
-    icon: Video,
-    iconColor: '#ff4444',
-  },
-  {
-    label: 'New Users',
-    value: '13',
-    sub: 'in selected period',
-    icon: Users,
-    iconColor: '#4a9eff',
-  },
-  {
-    label: 'Active Users',
-    value: '13',
-    sub: 'current total',
-    icon: TrendingUp,
-    iconColor: '#22c55e',
-  },
-];
+import { requestJson } from './adminApi';
 
 const VIEWING_TREND_DATA = [
   { date: 'Apr 03', value: 4 },
@@ -330,10 +276,10 @@ function DonutChart({ data }) {
   const r = 55;
   const innerR = 38;
 
-  let cumulative = 0;
-  const slices = data.map((d) => {
-    const startAngle = (cumulative / total) * 2 * Math.PI - Math.PI / 2;
-    cumulative += d.value;
+  const slices = data.map((d, index) => {
+    const prefixTotal = data.slice(0, index).reduce((sum, item) => sum + item.value, 0);
+    const cumulative = prefixTotal + d.value;
+    const startAngle = (prefixTotal / total) * 2 * Math.PI - Math.PI / 2;
     const endAngle = (cumulative / total) * 2 * Math.PI - Math.PI / 2;
     const x1 = cx + r * Math.cos(startAngle);
     const y1 = cy + r * Math.sin(startAngle);
@@ -371,9 +317,97 @@ function DonutChart({ data }) {
 }
 
 export default function AdminDashboard() {
-  const [activeNav, setActiveNav] = useState('dashboard');
   const [timeRange, setTimeRange] = useState('Last 7 Days');
   const [selectedActivity, setSelectedActivity] = useState(null);
+  const [summary, setSummary] = useState({
+    totalUsers: 0,
+    totalVideos: 0,
+    activeUsers: 0,
+    totalViews: 0,
+  });
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadSummary = async () => {
+      try {
+        const data = await requestJson('/admin/summary');
+        if (!cancelled) {
+          setSummary((prev) => ({ ...prev, ...data }));
+        }
+      } catch {
+        if (!cancelled) {
+          setSummary({
+            totalUsers: 0,
+            totalVideos: 0,
+            activeUsers: 0,
+            totalViews: 0,
+          });
+        }
+      }
+    };
+
+    loadSummary();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const systemStats = [
+    {
+      label: 'Total Users',
+      value: String(summary.totalUsers),
+      icon: Users,
+      iconColor: '#4a9eff',
+      iconBg: '#1a3a5c',
+    },
+    {
+      label: 'Total Videos',
+      value: String(summary.totalVideos),
+      icon: Video,
+      iconColor: '#ff4444',
+      iconBg: '#3a1a1a',
+    },
+    {
+      label: 'Active Users (Today)',
+      value: String(summary.activeUsers),
+      icon: Activity,
+      iconColor: '#22c55e',
+      iconBg: '#0f2d1a',
+    },
+    {
+      label: 'Total Views',
+      value: String(summary.totalViews),
+      icon: Eye,
+      iconColor: '#f59e0b',
+      iconBg: '#2d1f0a',
+    },
+  ];
+
+  const analyticsStats = [
+    {
+      label: 'Total Views',
+      value: String(summary.totalViews),
+      sub: 'from the database',
+      icon: Video,
+      iconColor: '#ff4444',
+    },
+    {
+      label: 'New Users',
+      value: String(summary.totalUsers),
+      sub: 'current total accounts',
+      icon: Users,
+      iconColor: '#4a9eff',
+    },
+    {
+      label: 'Active Users',
+      value: String(summary.activeUsers),
+      sub: 'current total',
+      icon: TrendingUp,
+      iconColor: '#22c55e',
+    },
+  ];
 
   return (
     <div className="admin-layout">
@@ -408,7 +442,7 @@ export default function AdminDashboard() {
           </div>
 
           <div className="stats-grid stats-grid--4">
-            {SYSTEM_STATS.map((s, i) => {
+            {systemStats.map((s, i) => {
               const Icon = s.icon;
               return (
                 <div key={i} className="stat-card">
@@ -456,7 +490,7 @@ export default function AdminDashboard() {
           </div>
 
           <div className="stats-grid stats-grid--3">
-            {ANALYTICS_STATS.map((s, i) => {
+            {analyticsStats.map((s, i) => {
               const Icon = s.icon;
               return (
                 <div key={i} className="stat-card">

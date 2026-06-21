@@ -547,6 +547,7 @@ export default function VideoManagement() {
               </label>
               <input
                 className={`vm-input ${formErrors.title ? 'vm-input--error' : ''}`}
+                required
                 placeholder="Enter title"
                 value={formData.title}
                 onChange={(e) => setFormData((p) => ({ ...p, title: e.target.value }))}
@@ -640,6 +641,7 @@ export default function VideoManagement() {
                 </label>
                 <select
                   className={`vm-select ${formErrors.status ? 'vm-input--error' : ''}`}
+                  required
                   value={formData.status}
                   onChange={(e) => setFormData((p) => ({ ...p, status: e.target.value }))}
                 >
